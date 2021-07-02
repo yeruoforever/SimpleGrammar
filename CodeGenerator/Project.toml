@@ -1,0 +1,4 @@
+name = "CodeGenerator"
+uuid = "e9683f74-c3d9-4f3e-897a-793be5d4cc3c"
+authors = ["yeruo "]
+version = "0.1.0"
