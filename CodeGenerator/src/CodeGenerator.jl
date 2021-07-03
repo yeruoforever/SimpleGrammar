@@ -2,10 +2,10 @@ module CodeGenerator
 import Base:show
 
 Terminal = Symbol
-Nonterminal =Symbol
-Token=Union{Terminal,Nonterminal}
+Nonterminal = Symbol
+Token = Union{Terminal,Nonterminal}
 Statement = Vector{Token}
-Production=Dict{Token,Set{Statement}}
+Production = Dict{Token,Set{Statement}}
 
 
 include("grammar.jl")
