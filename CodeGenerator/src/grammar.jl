@@ -31,7 +31,11 @@ end
 
 function prettyshow(io::IO,x::Grammar)
       show(io,x)
-      println()
+      print(io,"Terminal\t")
+      foreach(x->print(io,x," "),x.𝐕ₜ)
+      print(io,"\nNonterminal\t")
+      foreach(x->print(io,x," "),x.𝐕ₙ)
+      println(io)
       for (k,v) in x.𝐏
             print(io,k)
             for (i,p) in enumerate(v)
@@ -41,7 +45,7 @@ function prettyshow(io::IO,x::Grammar)
                         print(io,string(w)," ")
                   end
             end
-            println("\n;")
+            println(io,"\n;")
       end
 end
 
@@ -61,7 +65,7 @@ function chooseToken!(𝐕ₜ, 𝐕ₙ, word)
 end
 
 
-function grammar(buffer)
+function Grammar(buffer)
       𝐕ₜ = Set{Terminal}()
       𝐕ₙ = Set{Nonterminal}()
       𝐏 = Dict{Nonterminal,Set{Statement}}()
