@@ -17,9 +17,9 @@ function bind(g::Generator, syms::Vector{Terminal}, fs::Vector{Function})
 end
 
 
-"广度优先搜索导致指数型爆炸增长，目前可运行的最大深度为2"
+"广度优先搜索生成可能的句型"
 function generate_bfs(g::Generator, token::Nonterminal;max_depth::Int64=2)
-    queue = Tuple{Statement,Int64}[]
+    queue = Statement[]
     used = Set{Statement}()
     result = Set{Statement}()
 	isterminal = ∈(g.𝐕ₜ)
@@ -27,52 +27,54 @@ function generate_bfs(g::Generator, token::Nonterminal;max_depth::Int64=2)
 		if all(isterminal, p)
 			push!(result, p)
 		else
-			push!(queue, (p, 0))
+			push!(queue, p)
 			push!(used, p)
 		end
 	end
+    step = 0
     while !isempty(queue)
-		p, step = popfirst!(queue)
-		step > max_depth && continue
-		idx = findall(∈(g.𝐕ₙ), p)
-		reverse!(idx)
-		tmp = Statement[p]
-		for i in idx
-			n = length(tmp)
-			for j in 1:n 
-				now = popfirst!(tmp)
-				for pp in g.𝐏[p[i]]
-					np = copy(now)
-					splice!(np, i, pp)
-					if all(isterminal, np)
-						push!(result, np)
-					else
-						np ∉ used  && push!(tmp, np)
-					end
-				end
-			end
-		end
-		for np in tmp
-			push!(queue, (np, step + 1))
-		end
+        num = length(queue)
+        @info num
+        for _ in 1:num
+            p = popfirst!(queue)
+            idx = findall(∈(g.𝐕ₙ), p)
+            reverse!(idx)
+            tmp = Statement[p,]
+            for i in idx
+                n = length(tmp)
+                for j in 1:n 
+                    now = popfirst!(tmp)
+                    for pp in g.𝐏[p[i]]
+                        np=splice(now, i, pp)
+                        if all(isterminal, np)
+                            push!(result, np)
+                        else
+                            if np ∉ used && step < max_depth
+                                push!(tmp, np)
+                                push!(used, np)
+                            end
+                        end
+                    end
+                end
+            end
+            for np in tmp
+                push!(queue, np)
+            end
+        end
+        step = step + 1
 	end
-	result |> collect
+	true, result |> collect
 end
 
-"深度优先搜索产生可能的语句,目前可运行的最大深度为5"
+"深度优先搜索产生可能的句型"
 function generate_dfs(g::Generator, token::Nonterminal;max_depth::Int64=10)
-    isTerminal = ∈(g.𝐕ₜ)
-    isTerminal(token) && return (true, Statement[ [token,],])
+    max_depth == 0 && return (false,nothing)
     ps = g.𝐏[token] |> collect
-    if max_depth == 0
-        filter!(p -> all(isTerminal, p), ps)
-        isempty(ps) && return (false, nothing)
-        return (true, ps)
-    end
     for i in length(ps):-1:1
-        nps = Statement[ps[i],]
         remove_pi = false
-            idx = findall(∈(g.𝐕ₙ), ps[i])
+        idx = findall(∈(g.𝐕ₙ), ps[i])
+        isempty(idx) && continue
+        nps = Statement[ps[i],]
         reverse!(idx)
         for j in idx
             (flag, res) = generate_dfs(g, ps[i][j], max_depth=max_depth - 1)
@@ -84,8 +86,7 @@ function generate_dfs(g::Generator, token::Nonterminal;max_depth::Int64=10)
             while !isempty(nps)
                 now = pop!(nps)
                 for r in res
-                   np = copy(now)
-                   splice!(np, j, r)
+                   np=splice(now, j, r)
                    push!(tmp, np)
                 end
             end
@@ -109,8 +110,8 @@ function generate(g::Generator, token::Token;max_depth::Int64=10,generator::Func
     token ∈ g.𝐕ₜ && return Statement[generate_ternamal(g, token),]
     (flag, states) = generator(g, token;max_depth)
     if !flag 
-        @warn false
-        return [1,2,3,4]
+        @warn "Generate fail."
+        return [[string(:ϵ),]]
     end
     return map(states) do s
         join(map(x -> generate_ternamal(g, x), s), " ")
