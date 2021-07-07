@@ -22,7 +22,7 @@ function ϵ_colsure(fa::FiniteAutomata, 𝐈::StateSet)
     queue = collect(State, 𝐈)
     while !isempty(queue)
         s = popfirst!(queue)
-        for next in fa.f[s][:ϵ]
+        for next in get(fa.f[s],:ϵ,StateSet()) 
             if next ∉ states
                 push!(states, next)
                 push!(queue, next)
@@ -98,6 +98,7 @@ end
 "DFA化简（最小化）"
 function simplify(dfa::DeterministicFiniteAutomata)
     # todo 首先去除无用状态
+
     # 分割法
     
 end
