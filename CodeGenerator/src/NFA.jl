@@ -64,11 +64,11 @@ end
 "子集法产生新的状态集"
 function subset(fa::FiniteAutomata)
     counter = 1
-    table = Dict{Symbol,StateSet}()
-    f = Transition{Symbol}()
+    table = Dict{State,StateSet}()
+    f = Transition{State}()
     𝐂₀ = ϵ_colsure(fa, fa.𝐊)
     s₀ = createSym!(table, Ref(counter), 𝐂₀)
-    𝐂 = Tuple{StateSet,Symbol}[(𝐂₀, s₀),]   
+    𝐂 = Tuple{StateSet,State}[(𝐂₀, s₀),]   
     𝐓 = Set{StateSet}()
         while !isempty(𝐂)
         (T, s) = popfirst!(𝐂)
@@ -77,7 +77,7 @@ function subset(fa::FiniteAutomata)
             𝐔 = ϵ_colsure(fa, move(fa, T, α))
             𝐔 ∈ 𝐓 && continue
             sym = createSym!(table, Ref(counter), 𝐔)
-            !haskey(f, s) && f[s] = Dict{Symbol,Symbol}()
+            !haskey(f, s) && f[s] = Dict{Symbol,State}()
             f[s][α] = sym
             push!(𝐂, (𝐔, sym))
         end
