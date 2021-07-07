@@ -1,3 +1,5 @@
+SetID = Int64
+
 "不确定有穷自动机"
 struct FiniteAutomata
     𝐊::StateSet             # 状态集
@@ -22,7 +24,7 @@ function ϵ_colsure(fa::FiniteAutomata, 𝐈::StateSet)
     queue = collect(State, 𝐈)
     while !isempty(queue)
         s = popfirst!(queue)
-        for next in get(fa.f[s],:ϵ,StateSet()) 
+        for next in get(fa.f[s], :ϵ, StateSet()) 
             if next ∉ states
                 push!(states, next)
                 push!(queue, next)
@@ -88,17 +90,101 @@ end
 function determine(fa::FiniteAutomata)
     𝐊, f = subset(fa)
     S = Symbol("St_1")
-    𝐙=filter(keys(𝐊)) do s
-        any(∈(fa.𝐙),𝐊[s])
+    𝐙 = filter(keys(𝐊)) do s
+        any(∈(fa.𝐙), 𝐊[s])
     end
-    DeterministicFiniteAutomata(keys(𝐊),fa.𝚺,f,S,𝐙)
+    DeterministicFiniteAutomata(keys(𝐊), fa.𝚺, f, S, 𝐙)
 end
 
+
+function remove_useless!(dfa::DeterministicFiniteAutomata)
+    queue = State[dfa.𝐒,]
+    𝐊 = StateSet()
+    push!(𝐊, dfa.𝐒)
+    while !isempty(queue)
+        s = popfirst!(queue)
+        for α in dfa.𝚺
+            !haskey(dfa.f[s], α) && continue
+            ns = dfa.f[s][α]
+            ns ∈ 𝐊 && continue
+            push!(queue, ns)
+            push!(𝐊, ns)
+        end
+    end
+    empty!(dfa.𝐊)
+    union!(dfa.𝐊, 𝐊)
+end
+
+
+function state2stid(𝐏::Vector{StateSet})
+    set_tabel = Dict{State,SetID}()
+    for (i, st) in 𝐏
+        for s ∈ st
+            set_tabel[s] = i
+        end
+    end
+    set_tabel
+end
+
+
+
+function segmentation!(𝐏::Vector{StateSet}, f::Transition{State}, 𝚺::SymbolTabel)
+    set_tabel = state2stid(𝐏)
+    i = 1
+    while i <= length(𝐏)
+        stateset = 𝐏[i]
+        length(stateset) == 1 && i += 1 && continue
+        cnt = 0
+        for α ∈ 𝚺
+            new_set = Dict{SetID,StateSet}()
+            for state in stateset
+                next_state = get(f[state], α, state)
+                state_id = set_tabel[next_state]
+                !haskey(new_set, state_id) && new_set[state_id] = StateSet()
+                push!(new_set[state_id], state)
+            end
+            if length(new_set) > 1
+                for set in values(new_set)
+                    splice!(𝐏, i, set)
+                    foreach(x -> set_tabel[x] = length(𝐏), set)
+                end
+                break
+            end
+            cnt += 1
+        end
+        cnt == length(𝚺) && i += 1
+    end
+    𝐏                    
+end
+
+
+function reset!(f::Transition{State}, src::State, dst::State)
+    for k in keys(f)
+        if k == src
+            delete!(f, k)
+        else
+            for e in keys(f[k])
+                v = f[k][e]
+                v == src && f[k][e] = dst
+            end
+        end
+    end
+    f
+end
 
 "DFA化简（最小化）"
-function simplify(dfa::DeterministicFiniteAutomata)
-    # todo 首先去除无用状态
-
+function simplify!(dfa::DeterministicFiniteAutomata)
+    remove_useless!(dfa)
     # 分割法
-    
+    𝐏 = StateSet[setdiff(dfa.𝐊, dfa.𝐙),dfa.𝐙]
+    segmentation!(𝐏, dfa.f, dfa.𝚺)
+    for set in 𝐏
+        state = pop!(set)
+        while !isempty(set)
+            removed = pop!(set)
+            reset!(dfa.f, removed, state)
+        end
+    end
+    dfa
 end
+    
